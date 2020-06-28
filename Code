@@ -1,0 +1,83 @@
+library(ggplot2)
+df <- read.csv("AirbnbNYCDataSet.csv")
+
+dim(df)
+summary(df)
+
+# removing index column
+new_df = df[,-1]
+
+# Analaysing frquency according to nieghbodhood
+fre_location <- data.frame(cbind(Frequency = table(df$neighbourhood_group), Percent = prop.table(table(df$neighbourhood_group)) * 100))
+fre_location <- fre_location[order(fre_location$Frequency),]
+fre_location
+
+# Analyzing room type frequency
+fre_type <- data.frame(cbind(Frequency = table(df$room_type), Percent = prop.table(table(df$room_type)) * 100))
+fre_type <- fre_type[order(fre_type$Frequency),]
+fre_type
+
+
+#  visualizing data of new york city with neighborhood group 
+ggplot(data=new_df)+geom_point(aes(x=latitude, y=longitude, color=neighbourhood_group))
+
+#  visualizing the rooms type according to neighborhood group of NYC
+ggplot(data=new_df, aes(x=neighbourhood_group))+
+  geom_bar(aes(fill=room_type))
+
+# save the whole data into graph type to run further commands with conditions
+gg <- ggplot(data=new_df)
+
+# visualize the number of review given according to neighborhood by attaching the gg variable to set condition in that
+gg + scale_y_log10()+ geom_point(aes(x=price,y=number_of_reviews, color=neighbourhood_group))
+
+# visualize the minimum number of nights according to neighborhood group
+gg + scale_y_log10()+geom_point(aes(x=price,y=minimum_nights, color=neighbourhood_group))
+
+# visualize the room type distribution among neighborhood operation
+
+gg + geom_boxplot(aes(x=neighbourhood_group, y= price, fill=room_type)) + scale_y_log10() + geom_hline(yintercept = mean(new_df$price), color="green")
+
+
+#Data Partition
+set.seed(222)
+ind=sample(2,nrow(new_df),replace = T,prob = c(0.8,0.2))
+train_df=new_df[ind==1,]
+test_df=new_df[ind==2,]
+# linear model
+linear_model <- lm (price ~ neighbourhood_group + latitude + longitude + room_type + minimum_nights  + number_of_reviews + reviews_per_month + calculated_host_listings_count +
+                        availability_365, data = train_df)
+
+pred<-predict(linear_model,test_df)
+# real and predicted sale prices of model using 
+table(test_df$price,pred)
+
+
+summary_model <- summary(linear_model)
+mse_1 <- summary_model$sigma^2
+r_sq_1 <- summary_model$r.squared
+adj_r_sq_1 <- summary_model$adj.r.squared
+
+summary_model
+
+
+# include the metrices of the linear regression model
+library(tidyverse)
+library(broom)
+model_metrics <- augment(linear_model)
+head(model_metrics)
+
+# linearity assumption of residual vs fitted 
+plot(linear_model, 1)
+
+# normality of residuals
+
+plot(linear_model,2)
+
+# outlier check
+plot(linear_model, 5)
+
+par(mfrow=c(2,2)) 
+plot(linear_model)
+
+
